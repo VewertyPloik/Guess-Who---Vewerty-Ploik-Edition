@@ -43,15 +43,15 @@
 <script>
 const CHARACTERS = [
   {name:"Jack",  male:true, hair:"Light Brown", race:"White", eyes:"Blue", hat:null},
-  {name:"Max",   male:true, hair:"Blonde", race:"White", eyes:"Green", hat:"Green"},
+  {name:"Max",   male:true, hair:"Light", race:"White", eyes:"Green", hat:"Green"},
   {name:"Daisy", male:false,hair:"Light Brown", race:"White", eyes:"Brown", hat:null},
-  {name:"Greg",  male:true, hair:"Blonde", race:"Black", eyes:"Green", hat:null},
+  {name:"Greg",  male:true, hair:"Light", race:"Black", eyes:"Green", hat:null},
   {name:"Macy",  male:false,hair:"Light Brown", race:"Black", eyes:"Green", hat:null},
-  {name:"Thomas",male:true, hair:"Blonde", race:"White", eyes:"Blue", hat:null},
-  {name:"Lucy",  male:false,hair:"Blonde", race:"White", eyes:"Brown", hat:null},
-  {name:"Jennifer",male:false,hair:"Blonde", race:"Black", eyes:"Green", hat:null},
+  {name:"Thomas",male:true, hair:"Light", race:"White", eyes:"Blue", hat:null},
+  {name:"Lucy",  male:false,hair:"Light", race:"White", eyes:"Brown", hat:null},
+  {name:"Jennifer",male:false,hair:"Light", race:"Black", eyes:"Green", hat:null},
   {name:"Kevin", male:true, hair:"Light Brown", race:"Black", eyes:"Brown", hat:null},
-  {name:"David", male:true, hair:"Blonde", race:"White", eyes:"Green", hat:"Blue"},
+  {name:"David", male:true, hair:"Light", race:"White", eyes:"Green", hat:"Blue"},
   {name:"Harry", male:true, hair:"Light Brown", race:"White", eyes:"Brown", hat:"Gray"},
   {name:"Omar",  male:true, hair:"None", race:"White", eyes:"Red", hat:null},
   {name:"Fred",   male:true, hair:"Orange", race:"White", eyes:"Blue", hat:"Blue"},
@@ -61,7 +61,17 @@ const CHARACTERS = [
   {name:"Gerald", male:true, hair:"Light Gray", race:"White", eyes:"Brown", hat:null},
   {name:"Carl",   male:true, hair:"Light Brown", race:"White", eyes:"Blue", hat:"Blue"},
   {name:"Isabel", male:false,hair:"Light Brown", race:"White", eyes:"Blue", hat:"Pink"},
-  {name:"Jawline",male:true, hair:"Light Gray", race:"White", eyes:"Red", hat:null}
+  {name:"Jawline",male:true, hair:"Light Gray", race:"White", eyes:"Red", hat:null},
+
+  // New characters
+  {name:"James", male:true, hair:"Light Brown", race:"Black", eyes:"Brown", hat:"Red", glasses:true},
+  {name:"Violet", male:false, hair:"Light Brown", race:"White", eyes:"Blue", hat:null, glasses:true},
+  {name:"Lee", male:true, hair:"Orange", race:"Black", eyes:"Blue", hat:null},
+  {name:"Daniel", male:true, hair:"Light Brown", race:"White", eyes:"Green", hat:null, glasses:true},
+  {name:"Xavier", male:true, hair:"Light Brown", race:"White", eyes:"Brown", hat:"Blue"},
+  {name:"Mark", male:true, hair:"Light", race:"Black", eyes:"Blue", hat:null, glasses:true},
+  {name:"Emma", male:false, hair:"Orange", race:"White", eyes:"Blue", hat:null},
+  {name:"Pablo", male:true, hair:"None", race:"White", eyes:"Red", hat:null, glasses:true}
 ];
 
 const QUESTIONS = [
@@ -70,7 +80,7 @@ const QUESTIONS = [
   {label:"Is your character white?", key:"white"},
   {label:"Is your character black?", key:"black"},
   {label:"Does your character have light brown hair?", key:"light brown hair"},
-  {label:"Does your character have blonde hair?", key:"blonde hair"},
+  {label:"Does your character have light hair?", key:"light hair"},
   {label:"Does your character have orange hair?", key:"orange hair"},
   {label:"Does your character have light gray hair?", key:"light gray hair"},
   {label:"Does your character have blue eyes?", key:"blue eyes"},
@@ -79,13 +89,14 @@ const QUESTIONS = [
   {label:"Does your character have red eyes?", key:"red eyes"},
   {label:"Does your character have a hat on?", key:"hat on"},
   {label:"Does your character have a blue hat?", key:"blue hat"},
-  {label:"Does your character have a gray hat?", key:"gray hat"}
+  {label:"Does your character have a gray hat?", key:"gray hat"},
+  {label:"Does your character have glasses?", key:"glasses"}
 ];
 
 const skinColors = { White:"#f2d6b3", Black:"#4b2e19" };
-const hairColors = { "Light Brown":"#a9745b", "Blonde":"#f7e27e", "None":null, "Orange":"#ff7f00", "Light Gray":"#d3d3d3" };
+const hairColors = { "Light Brown":"#a9745b", "Light":"#f7e27e", "None":null, "Orange":"#ff7f00", "Light Gray":"#d3d3d3" };
 const eyeColors  = { Blue:"#3c82f6", Brown:"#5b3714", Green:"#22c55e", Red:"#ff1a1a" };
-const hatColors  = { Green:"#22c55e", Blue:"#3b82f6", Gray:"#6b7280", Pink:"#f472b6" };
+const hatColors  = { Green:"#22c55e", Blue:"#3b82f6", Gray:"#6b7280", Pink:"#f472b6", Red:"#ef4444" };
 
 let gamesPlayed=parseInt(localStorage.getItem("gamesPlayed")||"0");
 let bestGuesses=localStorage.getItem("bestGuesses");
@@ -109,7 +120,7 @@ function hasAttr(c,key){
     case "white": return c.race==="White";
     case "black": return c.race==="Black";
     case "light brown hair": return c.hair==="Light Brown";
-    case "blonde hair": return c.hair==="Blonde";
+    case "light hair": return c.hair==="Light";
     case "orange hair": return c.hair==="Orange";
     case "light gray hair": return c.hair==="Light Gray";
     case "blue eyes": return c.eyes==="Blue";
@@ -119,6 +130,7 @@ function hasAttr(c,key){
     case "hat on": return !!c.hat;
     case "blue hat": return c.hat==="Blue";
     case "gray hat": return c.hat==="Gray";
+    case "glasses": return !!c.glasses;
   }
 }
 
@@ -143,6 +155,11 @@ function makeFace(c){
     `:``}
     <circle cx="38" cy="55" r="5" fill="${eyes}" stroke="#000" stroke-width="1"/>
     <circle cx="62" cy="55" r="5" fill="${eyes}" stroke="#000" stroke-width="1"/>
+    ${c.glasses?`
+      <circle cx="38" cy="55" r="8" fill="none" stroke="black" stroke-width="2"/>
+      <circle cx="62" cy="55" r="8" fill="none" stroke="black" stroke-width="2"/>
+      <line x1="46" y1="55" x2="54" y2="55" stroke="black" stroke-width="2"/>
+    `:``}
     <line x1="38" y1="72" x2="62" y2="72" stroke="#000" stroke-width="3" stroke-linecap="round"/>
   </svg>`;
 }
@@ -161,7 +178,7 @@ function renderBoard(){
       <div class="name">${c.name}</div>
       <div class="attrs">
         Hair: ${c.hair} – Skin: ${c.race}<br>
-        Eyes: ${c.eyes} – Hat: ${c.hat?c.hat:"No"}
+        Eyes: ${c.eyes} – Hat: ${c.hat?c.hat:"No"} – Glasses: ${c.glasses?"Yes":"No"}
       </div>
     `;
     card.onclick=()=>{
@@ -233,3 +250,4 @@ renderBoard();renderQuestions();updateStats();
 </script>
 </body>
 </html>
+
