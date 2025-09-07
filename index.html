@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Guess Who — Vewerty Ploik Edition</title>
+<style>
+  body{margin:0;font-family:sans-serif;background:#071024;color:#f0f0f0;padding:10px}
+  h2{margin:0 0 10px}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .stats{font-size:12px;text-align:right}
+  .board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+  @media(min-width:480px){.board{grid-template-columns:repeat(4,1fr)}}
+  .card{background:#0b1220;border-radius:12px;padding:8px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer}
+  .card.eliminated{opacity:0.3;filter:grayscale(1)}
+  .name{font-weight:bold;margin-top:4px}
+  .attrs{font-size:11px;color:#aaa;margin-top:2px}
+  svg{width:70px;height:70px}
+  button{margin:4px;padding:8px 10px;border-radius:8px;border:none;background:#1e293b;color:#fff}
+  .log{margin-top:8px;padding:6px;background:#0b1220;border-radius:8px;font-size:12px;max-height:150px;overflow:auto}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h2>Guess Who — Vewerty Ploik Edition</h2>
+  <div class="stats">
+    Games Played: <span id="gamesPlayed">0</span><br>
+    Best Guesses: <span id="bestGuesses">–</span>
+  </div>
+</div>
+
+<div>
+  <button id="startBtn">Start Game</button>
+  <button id="resetBtn">Reset</button>
+  <button id="guessBtn" style="display:none">Guess</button>
+</div>
+
+<div id="questionList"></div>
+<div class="log" id="logArea"></div>
+<div class="board" id="boardArea"></div>
+
+<script>
+const CHARACTERS = [
+  {name:"Jack",  male:true, hair:"Light Brown", race:"White", eyes:"Blue", hat:null},
+  {name:"Max",   male:true, hair:"*****", race:"White", eyes:"Green", hat:"Green"},
+  {name:"Daisy", male:false,hair:"Light Brown", race:"White", eyes:"Brown", hat:null},
+  {name:"Greg",  male:true, hair:"*****", race:"Black", eyes:"Green", hat:null},
+  {name:"Macy",  male:false,hair:"Light Brown", race:"Black", eyes:"Green", hat:null},
+  {name:"Thomas",male:true, hair:"*****", race:"White", eyes:"Blue", hat:null},
+  {name:"Lucy",  male:false,hair:"*****", race:"White", eyes:"Brown", hat:null},
+  {name:"Jennifer",male:false,hair:"*****", race:"Black", eyes:"Green", hat:null},
+  {name:"Kevin", male:true, hair:"Light Brown", race:"Black", eyes:"Brown", hat:null},
+  {name:"David", male:true, hair:"*****", race:"White", eyes:"Green", hat:"Blue"},
+  {name:"Harry", male:true, hair:"Light Brown", race:"White", eyes:"Brown", hat:"Gray"},
+  {name:"Omar",  male:true, hair:"None", race:"White", eyes:"Red", hat:null},
+  {name:"Fred",   male:true, hair:"Orange", race:"White", eyes:"Blue", hat:"Blue"},
+  {name:"Hailey", male:false,hair:"Orange", race:"White", eyes:"Green", hat:null},
+  {name:"Bob",    male:true, hair:"None", race:"White", eyes:"Green", hat:"Gray"},
+  {name:"Richard",male:true, hair:"Orange", race:"Black", eyes:"Brown", hat:null},
+  {name:"Gerald", male:true, hair:"Light Gray", race:"White", eyes:"Brown", hat:null},
+  {name:"Carl",   male:true, hair:"Light Brown", race:"White", eyes:"Blue", hat:"Blue"},
+  {name:"Isabel", male:false,hair:"Light Brown", race:"White", eyes:"Blue", hat:"Pink"},
+  {name:"Jawline",male:true, hair:"Light Gray", race:"White", eyes:"Red", hat:null}
+];
+
+const QUESTIONS = [
+  {label:"Is your character male?", key:"male"},
+  {label:"Is your character female?", key:"female"},
+  {label:"Is your character white?", key:"white"},
+  {label:"Is your character black?", key:"black"},
+  {label:"Does your character have light brown hair?", key:"light brown hair"},
+  {label:"Does your character have ***** hair?", key:"***** hair"},
+  {label:"Does your character have orange hair?", key:"orange hair"},
+  {label:"Does your character have light gray hair?", key:"light gray hair"},
+  {label:"Does your character have blue eyes?", key:"blue eyes"},
+  {label:"Does your character have brown eyes?", key:"brown eyes"},
+  {label:"Does your character have green eyes?", key:"green eyes"},
+  {label:"Does your character have red eyes?", key:"red eyes"},
+  {label:"Does your character have a hat on?", key:"hat on"},
+  {label:"Does your character have a blue hat?", key:"blue hat"},
+  {label:"Does your character have a gray hat?", key:"gray hat"}
+];
+
+const skinColors = { White:"#f2d6b3", Black:"#4b2e19" };
+const hairColors = { "Light Brown":"#a9745b", "*****":"#f7e27e", "None":null, "Orange":"#ff7f00", "Light Gray":"#d3d3d3" };
+const eyeColors  = { Blue:"#3c82f6", Brown:"#5b3714", Green:"#22c55e", Red:"#ff1a1a" };
+const hatColors  = { Green:"#22c55e", Blue:"#3b82f6", Gray:"#6b7280", Pink:"#f472b6" };
+
+let gamesPlayed=parseInt(localStorage.getItem("gamesPlayed")||"0");
+let bestGuesses=localStorage.getItem("bestGuesses");
+if(bestGuesses!==null) bestGuesses=parseInt(bestGuesses);
+let guessCount=0;
+
+function saveStats(){
+  localStorage.setItem("gamesPlayed",gamesPlayed);
+  if(bestGuesses!==null) localStorage.setItem("bestGuesses",bestGuesses);
+}
+function updateStats(){
+  document.getElementById('gamesPlayed').textContent=gamesPlayed;
+  document.getElementById('bestGuesses').textContent=bestGuesses===null?"–":bestGuesses;
+  saveStats();
+}
+
+function hasAttr(c,key){
+  switch(key){
+    case "male": return c.male;
+    case "female": return !c.male;
+    case "white": return c.race==="White";
+    case "black": return c.race==="Black";
+    case "light brown hair": return c.hair==="Light Brown";
+    case "***** hair": return c.hair==="*****";
+    case "orange hair": return c.hair==="Orange";
+    case "light gray hair": return c.hair==="Light Gray";
+    case "blue eyes": return c.eyes==="Blue";
+    case "brown eyes": return c.eyes==="Brown";
+    case "green eyes": return c.eyes==="Green";
+    case "red eyes": return c.eyes==="Red";
+    case "hat on": return !!c.hat;
+    case "blue hat": return c.hat==="Blue";
+    case "gray hat": return c.hat==="Gray";
+  }
+}
+
+function makeFace(c){
+  const skin = skinColors[c.race];
+  const hair = hairColors[c.hair];
+  const eyes = eyeColors[c.eyes];
+  const hat  = c.hat? hatColors[c.hat] : null;
+
+  return `
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="55" r="30" fill="${skin}" stroke="#000" stroke-width="2"/>
+    ${!c.male && hair?`
+      <rect x="20" y="35" width="10" height="40" fill="${hair}" rx="5"/>
+      <rect x="70" y="35" width="10" height="40" fill="${hair}" rx="5"/>
+      <ellipse cx="50" cy="35" rx="28" ry="14" fill="${hair}" />
+    `:``}
+    ${c.male && hair?`<ellipse cx="50" cy="35" rx="28" ry="14" fill="${hair}" />`:``}
+    ${hat?`
+      <rect x="22" y="10" width="56" height="20" fill="${hat}" rx="4"/>
+      <rect x="18" y="28" width="64" height="6" fill="${hat}" />
+    `:``}
+    <circle cx="38" cy="55" r="5" fill="${eyes}" stroke="#000" stroke-width="1"/>
+    <circle cx="62" cy="55" r="5" fill="${eyes}" stroke="#000" stroke-width="1"/>
+    <line x1="38" y1="72" x2="62" y2="72" stroke="#000" stroke-width="3" stroke-linecap="round"/>
+  </svg>`;
+}
+
+let yourSecret=null, aiSecret=null, started=false, eliminated={};
+
+function renderBoard(){
+  const board=document.getElementById('boardArea');
+  board.innerHTML='';
+  CHARACTERS.forEach(c=>{
+    const card=document.createElement('div');
+    card.className='card';
+    if(eliminated[c.name]) card.classList.add('eliminated');
+    card.innerHTML=`
+      ${makeFace(c)}
+      <div class="name">${c.name}</div>
+      <div class="attrs">
+        Hair: ${c.hair} – Skin: ${c.race}<br>
+        Eyes: ${c.eyes} – Hat: ${c.hat?c.hat:"No"}
+      </div>
+    `;
+    card.onclick=()=>{
+      if(!started){ yourSecret=c; log("You picked "+c.name); }
+      else{ eliminated[c.name]=!eliminated[c.name]; }
+      renderBoard();
+    };
+    board.appendChild(card);
+  });
+}
+function renderQuestions(){
+  const ql=document.getElementById('questionList');
+  ql.innerHTML='';
+  QUESTIONS.forEach(q=>{
+    const b=document.createElement('button');
+    b.textContent=q.label;
+    b.onclick=()=>askQuestion(q);
+    ql.appendChild(b);
+  });
+}
+
+function startGame(){
+  if(!yourSecret){alert("Pick your secret first");return;}
+  aiSecret=CHARACTERS[Math.floor(Math.random()*CHARACTERS.length)];
+  started=true;
+  guessCount=0;
+  gamesPlayed++;
+  updateStats();
+  document.getElementById('guessBtn').style.display="inline-block";
+  log("Game started! Ask questions.");
+}
+function askQuestion(q){
+  if(!started)return;
+  const ans=hasAttr(aiSecret,q.key);
+  log(`You asked: "${q.label}" → ${ans?"Yes":"No"}`);
+  guessCount++;
+}
+function guess(){
+  if(!started)return;
+  const g=prompt("Who do you guess?");
+  if(!g)return;
+  guessCount++;
+  if(g===aiSecret.name){
+    log("✅ Correct! It was "+aiSecret.name+` (in ${guessCount} moves)`);
+    if(bestGuesses===null || guessCount<bestGuesses){ bestGuesses=guessCount; }
+  } else {
+    log("❌ Wrong! It was "+aiSecret.name+` (you used ${guessCount} moves)`);
+  }
+  updateStats();
+  started=false;
+}
+function reset(){
+  yourSecret=null;aiSecret=null;started=false;eliminated={};
+  document.getElementById('logArea').innerHTML='';
+  document.getElementById('guessBtn').style.display="none";
+  renderBoard();
+}
+function log(msg){
+  const area=document.getElementById('logArea');
+  const d=document.createElement('div');
+  d.textContent=msg;
+  area.prepend(d);
+}
+
+document.getElementById('startBtn').onclick=startGame;
+document.getElementById('resetBtn').onclick=reset;
+document.getElementById('guessBtn').onclick=guess;
+renderBoard();renderQuestions();updateStats();
+</script>
+</body>
+</html>
