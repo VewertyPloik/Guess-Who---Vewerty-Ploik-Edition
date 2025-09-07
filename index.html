@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Guess Who — Vewerty Ploik Edition</title>
+<title>Guess Who — Faces Edition</title>
 <style>
   body{margin:0;font-family:sans-serif;background:#071024;color:#f0f0f0;padding:10px}
   h2{margin:0 0 10px}
@@ -23,7 +23,7 @@
 <body>
 
 <div class="topbar">
-  <h2>Guess Who — Vewerty Ploik Edition</h2>
+  <h2>Guess Who — Faces Edition</h2>
   <div class="stats">
     Games Played: <span id="gamesPlayed">0</span><br>
     Best Guesses: <span id="bestGuesses">–</span>
@@ -43,15 +43,15 @@
 <script>
 const CHARACTERS = [
   {name:"Jack",  male:true, hair:"Light Brown", race:"White", eyes:"Blue", hat:null},
-  {name:"Max",   male:true, hair:"*****", race:"White", eyes:"Green", hat:"Green"},
+  {name:"Max",   male:true, hair:"Blonde", race:"White", eyes:"Green", hat:"Green"},
   {name:"Daisy", male:false,hair:"Light Brown", race:"White", eyes:"Brown", hat:null},
-  {name:"Greg",  male:true, hair:"blonde", race:"Black", eyes:"Green", hat:null},
+  {name:"Greg",  male:true, hair:"Blonde", race:"Black", eyes:"Green", hat:null},
   {name:"Macy",  male:false,hair:"Light Brown", race:"Black", eyes:"Green", hat:null},
-  {name:"Thomas",male:true, hair:"blonde", race:"White", eyes:"Blue", hat:null},
-  {name:"Lucy",  male:false,hair:"blonde", race:"White", eyes:"Brown", hat:null},
-  {name:"Jennifer",male:false,hair:"blonde", race:"Black", eyes:"Green", hat:null},
+  {name:"Thomas",male:true, hair:"Blonde", race:"White", eyes:"Blue", hat:null},
+  {name:"Lucy",  male:false,hair:"Blonde", race:"White", eyes:"Brown", hat:null},
+  {name:"Jennifer",male:false,hair:"Blonde", race:"Black", eyes:"Green", hat:null},
   {name:"Kevin", male:true, hair:"Light Brown", race:"Black", eyes:"Brown", hat:null},
-  {name:"David", male:true, hair:"blonde", race:"White", eyes:"Green", hat:"Blue"},
+  {name:"David", male:true, hair:"Blonde", race:"White", eyes:"Green", hat:"Blue"},
   {name:"Harry", male:true, hair:"Light Brown", race:"White", eyes:"Brown", hat:"Gray"},
   {name:"Omar",  male:true, hair:"None", race:"White", eyes:"Red", hat:null},
   {name:"Fred",   male:true, hair:"Orange", race:"White", eyes:"Blue", hat:"Blue"},
@@ -83,7 +83,7 @@ const QUESTIONS = [
 ];
 
 const skinColors = { White:"#f2d6b3", Black:"#4b2e19" };
-const hairColors = { "Light Brown":"#a9745b", "blonde":"#f7e27e", "None":null, "Orange":"#ff7f00", "Light Gray":"#d3d3d3" };
+const hairColors = { "Light Brown":"#a9745b", "Blonde":"#f7e27e", "None":null, "Orange":"#ff7f00", "Light Gray":"#d3d3d3" };
 const eyeColors  = { Blue:"#3c82f6", Brown:"#5b3714", Green:"#22c55e", Red:"#ff1a1a" };
 const hatColors  = { Green:"#22c55e", Blue:"#3b82f6", Gray:"#6b7280", Pink:"#f472b6" };
 
@@ -109,7 +109,7 @@ function hasAttr(c,key){
     case "white": return c.race==="White";
     case "black": return c.race==="Black";
     case "light brown hair": return c.hair==="Light Brown";
-    case "***** hair": return c.hair==="*****";
+    case "blonde hair": return c.hair==="Blonde";
     case "orange hair": return c.hair==="Orange";
     case "light gray hair": return c.hair==="Light Gray";
     case "blue eyes": return c.eyes==="Blue";
