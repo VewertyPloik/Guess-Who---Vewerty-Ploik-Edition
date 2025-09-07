@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Guess Who — Vewerty Ploik Edition</title>
+<style>
+  body{margin:0;font-family:sans-serif;background:#071024;color:#f0f0f0;padding:10px}
+  h2{margin:0 0 10px}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .stats{font-size:12px;text-align:right}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+  @media(min-width:480px){.board{grid-template-columns:repeat(4,1fr)}}
+  .card{background:#0b1220;border-radius:12px;padding:8px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer}
+  .card.eliminated{opacity:0.3;filter:grayscale(1)}
+  .name{font-weight:bold;margin-top:4px}
+  .attrs{font-size:11px;color:#aaa;margin-top:2px}
+  svg{width:70px;height:70px}
+  button{margin:4px;padding:8px 10px;border-radius:8px;border:none;background:#1e293b;color:#fff;cursor:pointer}
+  .log{margin-top:8px;padding:6px;background:#0b1220;border-radius:8px;font-size:12px;max-height:150px;overflow:auto}
+  .musicStatus{display:flex;align-items:center;gap:8px;background:#081226;padding:6px;border-radius:8px}
+  .dot{width:10px;height:10px;border-radius:50%;background:#7f1d1d;box-shadow:0 0 6px rgba(0,0,0,0.6)}
+  .dot.on{background:#1ec28a;box-shadow:0 0 8px rgba(30,194,138,0.6)}
+  #viz{width:200px;height:40px;border-radius:6px;background:#021021}
+  .small{font-size:12px;color:#9aa3b2}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h2>Guess Who — Vewerty Ploik Edition</h2>
+  <div class="stats">
+    Games Played: <span id="gamesPlayed">0</span><br>
+    Best Guesses: <span id="bestGuesses">–</span>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="startBtn">Start Game</button>
+  <button id="resetBtn">Reset</button>
+  <button id="guessBtn" style="display:none">Guess</button>
+
+  <!-- Music controls -->
+  <div class="musicStatus" aria-live="polite" style="margin-left:6px">
+    <div id="musicDot" class="dot" title="music on/off indicator"></div>
+    <div>
+      <div id="musicText" class="small">Music: Off</div>
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <button id="musicBtn" aria-pressed="false">Toggle Music</button>
+        <label class="small" style="display:flex;align-items:center;gap:6px">
+          Tempo
+          <input id="bpm" type="range" min="70" max="140" value="110" style="width:100px">
+          <span id="bpmVal" class="small">110</span>
+        </label>
+      </div>
+    </div>
+    <canvas id="viz" width="200" height="40" style="margin-left:8px"></canvas>
+  </div>
+</div>
+
+<div id="questionList"></div>
+<div class="log" id="logArea"></div>
+<div class="board" id="boardArea"></div>
+
+<script>
+/* ============================
+   Game code (unchanged)
+   ============================ */
+const CHARACTERS = [
+  {name:"Jack",  male:true, hair:"Light Brown", race:"White", eyes:"Blue", hat:null},
+  {name:"Max",   male:true, hair:"Light", race:"White", eyes:"Green", hat:"Green"},
+  {name:"Daisy", male:false,hair:"Light Brown", race:"White", eyes:"Brown", hat:null},
+  {name:"Greg",  male:true, hair:"Light", race:"Black", eyes:"Green", hat:null},
+  {name:"Macy",  male:false,hair:"Light Brown", race:"Black", eyes:"Green", hat:null},
+  {name:"Thomas",male:true, hair:"Light", race:"White", eyes:"Blue", hat:null},
+  {name:"Lucy",  male:false,hair:"Light", race:"White", eyes:"Brown", hat:null},
+  {name:"Jennifer",male:false,hair:"Light", race:"Black", eyes:"Green", hat:null},
+  {name:"Kevin", male:true, hair:"Light Brown", race:"Black", eyes:"Brown", hat:null},
+  {name:"David", male:true, hair:"Light", race:"White", eyes:"Green", hat:"Blue"},
+  {name:"Harry", male:true, hair:"Light Brown", race:"White", eyes:"Brown", hat:"Gray"},
+  {name:"Omar",  male:true, hair:"None", race:"White", eyes:"Red", hat:null},
+  {name:"Fred",   male:true, hair:"Orange", race:"White", eyes:"Blue", hat:"Blue"},
+  {name:"Hailey", male:false,hair:"Orange", race:"White", eyes:"Green", hat:null},
+  {name:"Bob",    male:true, hair:"None", race:"White", eyes:"Green", hat:"Gray"},
+  {name:"Richard",male:true, hair:"Orange", race:"Black", eyes:"Brown", hat:null},
+  {name:"Gerald", male:true, hair:"Light Gray", race:"White", eyes:"Brown", hat:null},
+  {name:"Carl",   male:true, hair:"Light Brown", race:"White", eyes:"Blue", hat:"Blue"},
+  {name:"Isabel", male:false,hair:"Light Brown", race:"White", eyes:"Blue", hat:"Pink"},
+  {name:"Jawline",male:true, hair:"Light Gray", race:"White", eyes:"Red", hat:null},
+  {name:"James", male:true, hair:"Light Brown", race:"Black", eyes:"Brown", hat:"Red", glasses:true},
+  {name:"Violet", male:false, hair:"Light Brown", race:"White", eyes:"Blue", hat:null, glasses:true},
+  {name:"Lee", male:true, hair:"Orange", race:"Black", eyes:"Blue", hat:null},
+  {name:"Daniel", male:true, hair:"Light Brown", race:"White", eyes:"Green", hat:null, glasses:true},
+  {name:"Xavier", male:true, hair:"Light Brown", race:"White", eyes:"Brown", hat:"Blue"},
+  {name:"Mark", male:true, hair:"Light", race:"Black", eyes:"Blue", hat:null, glasses:true},
+  {name:"Emma", male:false, hair:"Orange", race:"White", eyes:"Blue", hat:null},
+  {name:"Pablo", male:true, hair:"None", race:"White", eyes:"Red", hat:null, glasses:true}
+];
+
+const QUESTIONS = [
+  {label:"Is your character male?", key:"male"},
+  {label:"Is your character female?", key:"female"},
+  {label:"Is your character white?", key:"white"},
+  {label:"Is your character black?", key:"black"},
+  {label:"Does your character have light brown hair?", key:"light brown hair"},
+  {label:"Does your character have light hair?", key:"light hair"},
+  {label:"Does your character have orange hair?", key:"orange hair"},
+  {label:"Does your character have light gray hair?", key:"light gray hair"},
+  {label:"Does your character have blue eyes?", key:"blue eyes"},
+  {label:"Does your character have brown eyes?", key:"brown eyes"},
+  {label:"Does your character have green eyes?", key:"green eyes"},
+  {label:"Does your character have red eyes?", key:"red eyes"},
+  {label:"Does your character have a hat on?", key:"hat on"},
+  {label:"Does your character have a blue hat?", key:"blue hat"},
+  {label:"Does your character have a gray hat?", key:"gray hat"},
+  {label:"Does your character have glasses?", key:"glasses"}
+];
+
+const skinColors = { White:"#f2d6b3", Black:"#4b2e19" };
+const hairColors = { "Light Brown":"#a9745b", "Light":"#f7e27e", "None":null, "Orange":"#ff7f00", "Light Gray":"#d3d3d3" };
+const eyeColors  = { Blue:"#3c82f6", Brown:"#5b3714", Green:"#22c55e", Red:"#ff1a1a" };
+const hatColors  = { Green:"#22c55e", Blue:"#3b82f6", Gray:"#6b7280", Pink:"#f472b6", Red:"#ef4444" };
+
+let gamesPlayed=parseInt(localStorage.getItem("gamesPlayed")||"0");
+let bestGuesses=localStorage.getItem("bestGuesses");
+if(bestGuesses!==null) bestGuesses=parseInt(bestGuesses);
+let guessCount=0;
+
+function saveStats(){
+  localStorage.setItem("gamesPlayed",gamesPlayed);
+  if(bestGuesses!==null) localStorage.setItem("bestGuesses",bestGuesses);
+}
+function updateStats(){
+  document.getElementById('gamesPlayed').textContent=gamesPlayed;
+  document.getElementById('bestGuesses').textContent=bestGuesses===null?"–":bestGuesses;
+  saveStats();
+}
+
+function hasAttr(c,key){
+  switch(key){
+    case "male": return c.male;
+    case "female": return !c.male;
+    case "white": return c.race==="White";
+    case "black": return c.race==="Black";
+    case "light brown hair": return c.hair==="Light Brown";
+    case "light hair": return c.hair==="Light";
+    case "orange hair": return c.hair==="Orange";
+    case "light gray hair": return c.hair==="Light Gray";
+    case "blue eyes": return c.eyes==="Blue";
+    case "brown eyes": return c.eyes==="Brown";
+    case "green eyes": return c.eyes==="Green";
+    case "red eyes": return c.eyes==="Red";
+    case "hat on": return !!c.hat;
+    case "blue hat": return c.hat==="Blue";
+    case "gray hat": return c.hat==="Gray";
+    case "glasses": return !!c.glasses;
+  }
+}
+
+function makeFace(c){
+  const skin = skinColors[c.race];
+  const hair = hairColors[c.hair];
+  const eyes = eyeColors[c.eyes];
+  const hat  = c.hat? hatColors[c.hat] : null;
+
+  return `
+  <svg viewBox="0 0 100 100">
+    <circle cx="50" cy="55" r="30" fill="${skin}" stroke="#000" stroke-width="2"/>
+    ${!c.male && hair?`
+      <rect x="20" y="35" width="10" height="40" fill="${hair}" rx="5"/>
+      <rect x="70" y="35" width="10" height="40" fill="${hair}" rx="5"/>
+      <ellipse cx="50" cy="35" rx="28" ry="14" fill="${hair}" />
+    `:``}
+    ${c.male && hair?`<ellipse cx="50" cy="35" rx="28" ry="14" fill="${hair}" />`:``}
+    ${hat?`
+      <rect x="22" y="10" width="56" height="20" fill="${hat}" rx="4"/>
+      <rect x="18" y="28" width="64" height="6" fill="${hat}" />
+    `:``}
+    <circle cx="38" cy="55" r="5" fill="${eyes}" stroke="#000" stroke-width="1"/>
+    <circle cx="62" cy="55" r="5" fill="${eyes}" stroke="#000" stroke-width="1"/>
+    ${c.glasses?`
+      <circle cx="38" cy="55" r="8" fill="none" stroke="black" stroke-width="2"/>
+      <circle cx="62" cy="55" r="8" fill="none" stroke="black" stroke-width="2"/>
+      <line x1="46" y1="55" x2="54" y2="55" stroke="black" stroke-width="2"/>
+    `:``}
+    <line x1="38" y1="72" x2="62" y2="72" stroke="#000" stroke-width="3" stroke-linecap="round"/>
+  </svg>`;
+}
+
+let yourSecret=null, aiSecret=null, started=false, eliminated={};
+
+function renderBoard(){
+  const board=document.getElementById('boardArea');
+  board.innerHTML='';
+  CHARACTERS.forEach(c=>{
+    const card=document.createElement('div');
+    card.className='card';
+    if(eliminated[c.name]) card.classList.add('eliminated');
+    card.innerHTML=`
+      ${makeFace(c)}
+      <div class="name">${c.name}</div>
+      <div class="attrs">
+        Hair: ${c.hair} – Skin: ${c.race}<br>
+        Eyes: ${c.eyes} – Hat: ${c.hat?c.hat:"No"} – Glasses: ${c.glasses?"Yes":"No"}
+      </div>
+    `;
+    card.onclick=()=>{
+      if(!started){ yourSecret=c; log("You picked "+c.name); }
+      else{ eliminated[c.name]=!eliminated[c.name]; }
+      renderBoard();
+    };
+    board.appendChild(card);
+  });
+}
+function renderQuestions(){
+  const ql=document.getElementById('questionList');
+  ql.innerHTML='';
+  QUESTIONS.forEach(q=>{
+    const b=document.createElement('button');
+    b.textContent=q.label;
+    b.onclick=()=>askQuestion(q);
+    ql.appendChild(b);
+  });
+}
+
+function startGame(){
+  if(!yourSecret){alert("Pick your secret first");return;}
+  aiSecret=CHARACTERS[Math.floor(Math.random()*CHARACTERS.length)];
+  started=true;
+  guessCount=0;
+  gamesPlayed++;
+  updateStats();
+  document.getElementById('guessBtn').style.display="inline-block";
+  log("Game started! Ask questions.");
+}
+function askQuestion(q){
+  if(!started)return;
+  const ans=hasAttr(aiSecret,q.key);
+  log(`You asked: "${q.label}" → ${ans?"Yes":"No"}`);
+  guessCount++;
+}
+function guess(){
+  if(!started)return;
+  const g=prompt("Who do you guess?");
+  if(!g)return;
+  guessCount++;
+  if(g===aiSecret.name){
+    log("✅ Correct! It was "+aiSecret.name+` (in ${guessCount} moves)`);
+    if(bestGuesses===null || guessCount<bestGuesses){ bestGuesses=guessCount; }
+  } else {
+    log("❌ Wrong! It was "+aiSecret.name+` (you used ${guessCount} moves)`);
+  }
+  updateStats();
+  started=false;
+}
+function reset(){
+  yourSecret=null;aiSecret=null;started=false;eliminated={};
+  document.getElementById('logArea').innerHTML='';
+  document.getElementById('guessBtn').style.display="none";
+  renderBoard();
+}
+function log(msg){
+  const area=document.getElementById('logArea');
+  const d=document.createElement('div');
+  d.textContent=msg;
+  area.prepend(d);
+}
+
+document.getElementById('startBtn').onclick=startGame;
+document.getElementById('resetBtn').onclick=reset;
+document.getElementById('guessBtn').onclick=guess;
+renderBoard();renderQuestions();updateStats();
+
+/* ============================
+   Retro beat (Web Audio API)
+   - Made from scratch, no external audio files
+   - Kick, snare, hihat, synth arpeggio
+   - Visualizer and on/off indicator
+   ============================ */
+
+let audioCtx = null;
+let masterGain, analyser;
+let isPlaying = false;
+let schedulerId = null;
+let lookahead = 25.0; // ms
+let scheduleAheadTime = 0.2; // seconds
+let nextNoteTime = 0.0;
+let current16th = 0;
+let bpmControl = document.getElementById('bpm');
+let bpmVal = document.getElementById('bpmVal');
+
+const steps = 16;
+let bpm = parseInt(bpmControl.value, 10);
+bpmVal.textContent = bpm;
+
+bpmControl.addEventListener('input', ()=> {
+  bpm = parseInt(bpmControl.value,10);
+  bpmVal.textContent = bpm;
+});
+
+const patterns = {
+  kick:   [1,0,0,0, 0,0,1,0, 1,0,0,0, 0,1,0,0],
+  snare:  [0,0,0,0, 1,0,0,0, 0,0,1,0, 0,0,0,0],
+  hihat:  [1,0,1,0, 1,0,1,0, 1,0,1,0, 1,0,1,0],
+  synth:  [1,0,0,0, 0,1,0,0, 1,0,0,0, 0,1,0,0]
+};
+
+// a small arpeggio (in semitone offsets)
+const arp = [0, 3, 7, 10];
+
+function ensureAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.9;
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  masterGain.connect(analyser);
+  analyser.connect(audioCtx.destination);
+
+  // pre-create noise buffer for snare/hihat
+  createNoiseBuffer();
+}
+
+let noiseBuffer = null;
+function createNoiseBuffer(){
+  if(noiseBuffer || !audioCtx) return;
+  const length = audioCtx.sampleRate * 1.0;
+  const buffer = audioCtx.createBuffer(1, length, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0;i<length;i++) data[i] = (Math.random()*2-1);
+  noiseBuffer = buffer;
+}
+
+function schedule() {
+  // schedule notes while nextNoteTime is within the window
+  const secondsPer16th = 60.0 / bpm / 4.0;
+  while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
+    // schedule events at current16th for time nextNoteTime
+    scheduleStep(current16th, nextNoteTime);
+    nextNoteTime += secondsPer16th;
+    current16th = (current16th + 1) % steps;
+  }
+}
+
+function startScheduler(){
+  if (schedulerId) return;
+  nextNoteTime = audioCtx.currentTime + 0.05;
+  schedulerId = setInterval(schedule, lookahead);
+  drawVisualizer();
+}
+
+function stopScheduler(){
+  if (schedulerId) {
+    clearInterval(schedulerId);
+    schedulerId = null;
+  }
+  cancelAnimationFrame(vizAnimationId);
+  // fade out quickly
+  if(masterGain) masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+  if(masterGain) masterGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.02);
+}
+
+function scheduleStep(stepIndex, time){
+  if(patterns.kick[stepIndex]) playKick(time);
+  if(patterns.snare[stepIndex]) playSnare(time);
+  if(patterns.hihat[stepIndex]) playHiHat(time);
+  if(patterns.synth[stepIndex]) {
+    const arpNote = arp[stepIndex % arp.length];
+    playSynth(time, arpNote);
+  }
+}
+
+function playKick(time){
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(120, time);
+  o.frequency.exponentialRampToValueAtTime(40, time + 0.15);
+  g.gain.setValueAtTime(1.0, time);
+  g.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+  o.connect(g);
+  g.connect(masterGain);
+  o.start(time);
+  o.stop(time + 0.3);
+}
+
+function playSnare(time){
+  // noise burst + tone
+  // noise
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = noiseBuffer;
+  const noiseFilter = audioCtx.createBiquadFilter();
+  noiseFilter.type = 'bandpass';
+  noiseFilter.frequency.setValueAtTime(1800, time);
+  const noiseGain = audioCtx.createGain();
+  noiseGain.gain.setValueAtTime(0.7, time);
+  noiseGain.gain.exponentialRampToValueAtTime(0.01, time + 0.18);
+  noise.connect(noiseFilter);
+  noiseFilter.connect(noiseGain);
+  noiseGain.connect(masterGain);
+  noise.start(time);
+  noise.stop(time + 0.2);
+
+  // body tone
+  const o = audioCtx.createOscillator();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(180, time);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.8, time);
+  g.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+  o.connect(g);
+  g.connect(masterGain);
+  o.start(time);
+  o.stop(time + 0.16);
+}
+
+function playHiHat(time){
+  // short bright noise through highpass
+  const noise = audioCtx.createBufferSource();
+  noise.buffer = noiseBuffer;
+  const hp = audioCtx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.setValueAtTime(7000, time);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.35, time);
+  g.gain.exponentialRampToValueAtTime(0.001, time + 0.06);
+  noise.connect(hp);
+  hp.connect(g);
+  g.connect(masterGain);
+  noise.start(time);
+  noise.stop(time + 0.07);
+}
+
+function playSynth(time, semitoneOffset){
+  const baseFreq = 110; // A2
+  const freq = baseFreq * Math.pow(2, semitoneOffset / 12);
+  const o = audioCtx.createOscillator();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(freq, time);
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(1200, time);
+  filter.frequency.linearRampToValueAtTime(800, time + 0.18);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.35, time);
+  g.gain.exponentialRampToValueAtTime(0.001, time + 0.45);
+  o.connect(filter);
+  filter.connect(g);
+  g.connect(masterGain);
+  o.start(time);
+  o.stop(time + 0.5);
+}
+
+/* Visualizer */
+const canvas = document.getElementById('viz');
+const ctx = canvas.getContext('2d');
+let vizAnimationId = null;
+function drawVisualizer(){
+  if(!analyser) return;
+  const bufferLength = analyser.frequencyBinCount;
+  const data = new Uint8Array(bufferLength);
+  const draw = () => {
+    analyser.getByteFrequencyData(data);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    const barWidth = (canvas.width / bufferLength) * 2.5;
+    let x = 0;
+    // draw a small set of bars (compress freq bins)
+    const bins = 24;
+    const binSize = Math.floor(bufferLength / bins);
+    for(let i=0;i<bins;i++){
+      let sum=0;
+      for(let j=0;j<binSize;j++) sum += data[i*binSize + j];
+      const v = sum / binSize / 255;
+      const h = v * canvas.height;
+      ctx.fillStyle = '#13b5ff';
+      ctx.fillRect(x, canvas.height - h, barWidth, h);
+      x += barWidth + 1;
+    }
+    vizAnimationId = requestAnimationFrame(draw);
+  };
+  draw();
+}
+
+/* UI and control glue */
+const musicBtn = document.getElementById('musicBtn');
+const musicText = document.getElementById('musicText');
+const musicDot = document.getElementById('musicDot');
+
+function updateMusicUI(){
+  musicText.textContent = isPlaying ? `Music: On — ${bpm} BPM` : 'Music: Off';
+  musicDot.classList.toggle('on', isPlaying);
+  musicBtn.setAttribute('aria-pressed', String(isPlaying));
+}
+
+/* Start / stop music handlers */
+function startMusic(){
+  ensureAudio();
+  // resume context if suspended (browsers)
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  // bring up gain mellowly
+  masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+  masterGain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+  masterGain.gain.exponentialRampToValueAtTime(0.9, audioCtx.currentTime + 0.03);
+
+  isPlaying = true;
+  current16th = 0;
+  nextNoteTime = audioCtx.currentTime + 0.05;
+  startScheduler();
+  updateMusicUI();
+}
+
+function stopMusic(){
+  isPlaying = false;
+  stopScheduler();
+  // drop master volume
+  if(masterGain) {
+    masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    masterGain.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.02);
+  }
+  updateMusicUI();
+}
+
+musicBtn.addEventListener('click', async () => {
+  // user gesture required to start audio in many browsers
+  if(!audioCtx) ensureAudio();
+  if(audioCtx.state === 'suspended') await audioCtx.resume();
+  if(!isPlaying) startMusic();
+  else stopMusic();
+});
+
+/* update BPM live */
+bpmControl.addEventListener('change', ()=> {
+  bpm = parseInt(bpmControl.value,10);
+  bpmVal.textContent = bpm;
+  // UI text update
+  updateMusicUI();
+});
+
+/* keep UI in sync if user reloads with music off */
+updateMusicUI();
+
+/* Stop audio on page unload for cleanliness */
+window.addEventListener('beforeunload', () => {
+  if(audioCtx && audioCtx.state !== 'closed') {
+    try{
+      audioCtx.close();
+    }catch(e){}
+  }
+});
+</script>
+</body>
+</html>
